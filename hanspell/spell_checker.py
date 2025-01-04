@@ -9,6 +9,7 @@ import time
 import sys
 from collections import OrderedDict
 import xml.etree.ElementTree as ET
+import re
 
 from . import __version__
 from .response import Checked
@@ -18,6 +19,50 @@ from .constants import CheckResult
 _agent = requests.Session()
 PY3 = sys.version_info[0] == 3
 
+
+def get_passport_key():
+    """네이버에서 '네이버 맞춤법 검사기' 페이지에서 passportKey를 획득
+
+        - 네이버에서 '네이버 맞춤법 검사기'를 띄운 후 
+        html에서 passportKey를 검색하면 값을 찾을 수 있다.
+
+        - 찾은 값을 spell_checker.py 48 line에 적용한다.
+    """
+
+    url = "https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=네이버+맞춤법+검사기"
+    res = requests.get(url)
+
+    html_text = res.text
+
+    match = re.search(r'passportKey=([^&"}]+)', html_text)
+    if match:
+        passport_key = match.group(1)
+        return passport_key
+    else:
+        return False
+
+# def fix_spell_checker_py_code(file_path, passportKey):
+#     """획득한 passportkey를 spell_checker.py파일에 적용
+#     """
+    
+#     pattern = r"'passportKey': 'f2ccb97b68231984fa56d1949a18c9a4a74c296c'"
+
+#     with open(file_path, 'r', encoding='utf-8') as input_file:
+#         content = input_file.read()
+#         modified_content = re.sub(pattern, f"'passportKey': 'f2ccb97b68231984fa56d1949a18c9a4a74c296c'", content)
+
+#     with open(file_path, 'w', encoding='utf-8') as output_file:
+#         output_file.write(modified_content)
+    
+#     return 
+
+# spell_checker_file_path = './hanspell/spell_checker.py'
+
+# passport_key = get_passport_key()
+# if passport_key:
+#     fix_spell_checker_py_code(spell_checker_file_path, passport_key)
+# else:
+#     print("passportKey를 찾을 수 없습니다.")
 
 def _remove_tags(text):
     text = u'<content>{}</content>'.format(text).replace('<br>','')
@@ -45,6 +90,7 @@ def check(text):
         return Checked(result=False)
 
     payload = {
+        "passportKey" :get_passport_key(),
         'color_blindness': '0',
         'q': text
     }
@@ -112,3 +158,7 @@ def check(text):
     result = Checked(**result)
 
     return result
+
+
+
+
